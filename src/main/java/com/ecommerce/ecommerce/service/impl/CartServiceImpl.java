@@ -17,6 +17,7 @@ import com.ecommerce.ecommerce.security.SecurityUtil;
 import com.ecommerce.ecommerce.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
@@ -38,9 +40,6 @@ public class CartServiceImpl implements CartService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    // "Get or create" — every user gets exactly one Cart, lazily created
-    // the first time they interact with it, never requiring an explicit
-    // "create my cart" call from the frontend.
     private Cart getOrCreateCart(User user) {
         return cartRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
@@ -65,7 +64,6 @@ public class CartServiceImpl implements CartService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-        // Already in cart? increment quantity instead of creating a duplicate row.
         CartItem item = cartItemRepository
                 .findByCartIdAndProductId(cart.getId(), product.getId())
                 .orElse(null);
@@ -81,7 +79,6 @@ public class CartServiceImpl implements CartService {
 
         cartItemRepository.save(item);
 
-        // re-fetch the cart so the mapped response reflects the latest item list
         Cart refreshed = cartRepository.findById(cart.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
         return mapToResponse(refreshed);
@@ -121,8 +118,8 @@ public class CartServiceImpl implements CartService {
         User user = getCurrentUser();
         Cart cart = getOrCreateCart(user);
 
-        cartItemRepository.deleteAll(cart.getItems());
         cart.getItems().clear();
+        cartRepository.save(cart); // triggers orphanRemoval, actually deletes cart_item rows
 
         return mapToResponse(cart);
     }

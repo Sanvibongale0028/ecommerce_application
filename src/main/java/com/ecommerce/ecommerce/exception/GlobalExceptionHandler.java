@@ -22,8 +22,7 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
                 "Not Found",
-                ex.getMessage()
-        );
+                ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -37,5 +36,15 @@ public class GlobalExceptionHandler {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
         return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 }
